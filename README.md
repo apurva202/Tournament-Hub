@@ -4,9 +4,9 @@
 
 ![Tournament Hub Banner](https://img.shields.io/badge/Tournament-Hub-84cc16?style=for-the-badge&logo=trophy&logoColor=black)
 
-**Run complete tournaments in minutes, not spreadsheets.**
+**Run complete football tournaments in minutes, not spreadsheets.**
 
-Automate fixtures, group stage draws, knockout brackets, mobile scorer consoles, and real-time live standings with zero page refresh.
+Automate fixtures, group stage draws, knockout brackets, mobile scorer consoles, and real-time live standings with zero page refresh. *(Currently focused on football tournaments)*
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-success?style=for-the-badge&logo=vercel)](https://tournament-hub-omega.vercel.app/)
 [![Video Walkthrough](https://img.shields.io/badge/Demo%20Video-Google%20Drive-4285F4?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/drive/folders/1AtBayBzOhOFgPZryhqZHZK583nQKRaps?usp=sharing)
@@ -23,13 +23,20 @@ Automate fixtures, group stage draws, knockout brackets, mobile scorer consoles,
 
 ---
 
-## ⚡ Problem & Solution
+## ⚡ Problem Statement & Solution
+
+Grassroots football organizers (such as college fests, corporate leagues, and local turf championships) traditionally manage tournaments using WhatsApp groups and spreadsheets. Manual management causes recurring issues:
+
+1. **Draw & Scheduling Errors:** Manually creating group fixtures often leads to imbalanced groups, accidental duplicate matches, and incorrect bye allocations for knockout rounds.
+2. **Table & Tiebreaker Disputes:** Points tables must be manually recalculated after every match (Win = 3 pts, Draw = 1 pt, Loss = 0 pts), along with Goal Difference (GD), Goals For (GF), and Head-to-Head. Manual math leads to calculation errors and heated disputes over playoff qualification.
+3. **Information Delay:** Players, captains, and fans constantly message organizers asking about pitch locations, match times, and live scores because chat updates are delayed.
+4. **Pitch-Side Scoring Friction:** Organizers cannot be on every pitch at once, and lack a safe way to let referees record live goals from their phones without granting them full administrative rights to delete or alter tournament data.
 
 | The Old Way (Spreadsheets & Chat Groups) | The Tournament Hub Way |
 |---|---|
-| Hand-drawn brackets and fixtures prone to scheduling errors | **Automated draw** for round-robin groups and single elimination brackets |
+| Hand-drawn brackets and fixtures prone to scheduling errors | **Automated draw** for round-robin football groups and single-elimination brackets |
 | Manually recalculating points tables and goal difference | **Computed standings engine** derived strictly from completed match results |
-| Scorers text scores in chat, resulting in lag and disputes | **Mobile-friendly Scorer Console** with instant score controls (+/-) and timers |
+| Referees text scores in chat, resulting in lag and disputes | **Mobile-friendly Scorer Console** with instant score controls (+/-) and match timers |
 | Viewers constantly asking "Who plays next?" and "What's the score?" | **Real-time live WebSocket broadcast** with sub-second score updates without page refresh |
 | Accidental score overwrites or unauthorized result edits | **Strict role-based access control** (Organizer, Scorer via invite code, Viewer) |
 
@@ -37,25 +44,25 @@ Automate fixtures, group stage draws, knockout brackets, mobile scorer consoles,
 
 ## ✨ Core Features
 
-### 1. ⚙️ Smart Tournament Configuration
-- **Sport Presets:** Quick-start presets for **Football** (win=3, draw=1, loss=0, goal difference tiebreakers) and **Chess/Winner-only** sports, or fully customizable rule configurations.
-- **Participant Types:** Support for both team-based tournaments (with configurable min/max roster limits) and solo competitors.
+### 1. ⚙️ Football Tournament Configuration
+- **Football Points Engine:** Official football scoring rules: **Win = 3 points, Draw = 1 point, Loss = 0 points**.
+- **Dynamic Goal Difference Engine:** Goal difference (`GD = GF - GA`) and goals scored are dynamically tracked and computed directly from verified match results.
 - **Visibility Modes:** Choose between **Public** (searchable in Discover Arena), **Unlisted** (shareable via link), and **Private** (restricted to members only).
 
-### 2. 👥 Team & Roster Management
-- Register teams and paste player rosters directly (1 per line).
-- **Roster Validation:** Automatic enforcement of minimum and maximum squad sizes.
+### 2. 👥 Team & Squad Roster Management
+- Register football teams and paste player rosters directly (1 per line).
+- **Roster Validation:** Automatic enforcement of squad size limits (5 to 11 players per team).
 - **Team Editing:** Full capability to edit team names, update player rosters, and assign seeds prior to match kickoff.
 - **Match Start Lockout:** Protects competitive integrity by locking participant rosters once tournament matches begin.
 
 ### 3. 🎲 Automated Group Draw & Knockout Generation
 - **Balanced Group Draw:** Circle-method round-robin algorithm that distributes teams evenly across groups.
-- **Automatic Bye Handling:** Intelligently allocates byes when knockout stages have non-power-of-two participant counts.
+- **Automatic Bye Handling:** Intelligently allocates byes when knockout stages have non-power-of-two participant counts (e.g., 5, 6, 7 teams).
 - **Cross-Seeding Advancement:** Advances top *N* qualifiers from each group directly into structured knockout brackets (e.g., Group A Winner vs Group B Runner-Up).
 - **Cut-Off Tie Detection:** Blocks advancement with a `409 Conflict` preview if two or more teams tie exactly on points and all configured tiebreakers at the qualification cutoff.
 
 ### 4. ⏱️ Real-Time Scorer Console
-- **6-Character Invite Code:** Organizers can share an alphanumeric code to delegate scoring duties to court-side or field referees.
+- **6-Character Invite Code:** Organizers can share an alphanumeric code to delegate scoring duties to pitch-side referees.
 - **State Machine:** Matches progress through `scheduled` ➔ `live` ➔ `completed`.
 - **Live Match Timer:** Integrated match stopwatch supporting pause, resume, and minute tracking.
 - **WebSocket Synchronization:** Match events are pushed via Socket.io instantly to all spectators.
@@ -130,12 +137,12 @@ Tournament {
   owner: ObjectId -> User,
   status: 'draft' | 'live' | 'completed',
   visibility: 'public' | 'unlisted' | 'private',
-  participantType: 'solo' | 'team',
-  scoreboardType: 'score' | 'winner',
-  scoreLabel: String,
-  points: { win: Number, draw: Number, loss: Number },
-  tieBreakers: [String],
-  roster: { min: Number, max: Number },
+  participantType: 'team',
+  scoreboardType: 'score',
+  scoreLabel: 'Goals',
+  points: { win: 3, draw: 1, loss: 0 },
+  tieBreakers: ['points', 'goalDifference', 'goalsFor', 'headToHead'],
+  roster: { min: 5, max: 11 },
   inviteCode: { type: String, unique: true }
 }
 
@@ -192,13 +199,13 @@ All routes are served under `/api`:
 | `POST` | `/auth/register` | Public | Register new user account |
 | `POST` | `/auth/login` | Public | Log in and receive JWT authentication cookie |
 | `GET` | `/auth/me` | Logged In | Get current authenticated user profile |
-| `POST` | `/tournaments` | Logged In | Create tournament from sport preset |
+| `POST` | `/tournaments` | Logged In | Create football tournament |
 | `GET` | `/tournaments/my` | Logged In | Retrieve organizing, scoring, and followed tournaments |
 | `GET` | `/tournaments/:id` | Member | Get tournament configuration & details |
 | `PUT` | `/tournaments/:id` | Organizer | Update tournament settings & visibility |
 | `POST` | `/tournaments/join` | Logged In | Join a tournament as scorer using 6-character code |
-| `POST` | `/tournaments/:id/participants` | Organizer | Add participant team with player roster |
-| `PUT` | `/participants/:pid` | Organizer | Edit participant name, roster, or seed |
+| `POST` | `/tournaments/:id/participants` | Organizer | Add football team with player roster (5–11 players) |
+| `PUT` | `/participants/:pid` | Organizer | Edit team name, roster, or seed |
 | `DELETE` | `/participants/:pid` | Organizer | Remove participant before match kickoff |
 | `POST` | `/tournaments/:id/stages` | Organizer | Create round-robin or knockout stage |
 | `POST` | `/stages/:id/draw` | Organizer | Automatically partition teams into groups |
@@ -266,11 +273,11 @@ The application will be running at **`http://localhost:5173`**.
 
 ## 🔮 Roadmap & Future Scope (v2)
 
-- [ ] **Cricket & Esports Scoring Modules:** Support for cricket innings/overs/net-run-rate and best-of-3 / best-of-5 esports map vetoes.
-- [ ] **Double Elimination & Swiss Formats:** Support for loser brackets and chess Swiss system pairings.
-- [ ] **Player-Level Statistics:** Track tournament top scorers, golden boot, yellow/red cards, and MVP awards.
-- [ ] **SMS / Email Alerts:** Push notifications to captains and players when their match is called to a court/field.
-- [ ] **Custom Branding:** Allow organizers to upload custom logos and sponsor banners for tournament public pages.
+- [ ] **Multi-Sport Scoring Support:** Expansion to Cricket (innings, overs, NRR), Chess, and Esports formats.
+- [ ] **Double Elimination & Swiss Formats:** Support for loser brackets and Swiss system pairings.
+- [ ] **Player-Level Statistics:** Track tournament Golden Boot (top scorers), clean sheets, assists, and cards.
+- [ ] **SMS / WhatsApp Alerts:** Automated notifications to team captains prior to kickoff.
+- [ ] **Custom Branding:** Allow organizers to upload custom logos and sponsor banners for tournament pages.
 - [ ] **Payment Gateways:** Integrated tournament registration fee collection via Stripe/Razorpay.
 
 ---
