@@ -65,6 +65,7 @@ export default function PublicTournamentPage() {
   };
 
   const [activeTab, setActiveTab] = useState('fixtures');
+  const [fixtureFilter, setFixtureFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -192,6 +193,8 @@ export default function PublicTournamentPage() {
   }
 
   const liveMatches = matches.filter(m => m.status === 'live');
+  const upcomingMatches = matches.filter(m => m.status === 'scheduled');
+  const finishedMatches = matches.filter(m => m.status === 'completed');
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -308,86 +311,133 @@ export default function PublicTournamentPage() {
       </div>
 
       {/* TAB 1: FIXTURES */}
-      {activeTab === 'fixtures' && (
-        <div className="space-y-4">
-          {matches.length === 0 ? (
-            <div className="glass-panel p-10 rounded-2xl border border-slate-800 text-center text-slate-400 text-sm">
-              No fixtures scheduled yet.
-            </div>
-          ) : (
-            matches.map((m) => (
-              <div
-                key={m._id}
-                className={`glass-card p-4 sm:p-5 rounded-2xl border transition-all flex items-center justify-between ${
-                  m.status === 'live'
-                    ? 'border-lime-500/40 bg-lime-950/10 glow-lime-sm'
-                    : 'border-slate-800'
-                }`}
-              >
-                <div className="flex items-center space-x-3 sm:space-x-6">
-                  <div className="text-left w-20 sm:w-24">
+      {activeTab === 'fixtures' && (() => {
+        const renderMatchCard = (m) => {
+          const isWinnerA = m.status === 'completed' && m.result?.winner === 'A';
+          const isWinnerB = m.status === 'completed' && m.result?.winner === 'B';
+          const isDraw = m.status === 'completed' && m.result?.winner === 'draw';
+
+          return (
+            <div
+              key={m._id}
+              className={`glass-card p-4 sm:p-5 rounded-2xl border transition-all flex items-center justify-between ${
+                m.status === 'live'
+                  ? 'border-lime-500/60 bg-gradient-to-r from-lime-950/20 to-slate-900/90 shadow-lg shadow-lime-500/10'
+                  : 'border-slate-800'
+              }`}
+            >
+              <div className="flex items-center space-x-3 sm:space-x-6">
+                <div className="text-left w-20 sm:w-28 space-y-1">
+                  <div className="flex items-center space-x-1.5">
                     <span className="font-mono text-xs text-slate-400 font-bold block">
                       {m.roundLabel || `Round ${m.round}`}
                     </span>
-                    {m.group && (
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 text-lime-400 font-bold">
-                        {m.group}
+                    {m.status === 'live' && (
+                      <span className="flex items-center space-x-1 text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded-full bg-lime-500/20 text-lime-400 border border-lime-500/40 animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-lime-400" />
+                        <span>LIVE</span>
                       </span>
                     )}
                   </div>
+                  {m.group && (
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 text-lime-400 font-bold inline-block">
+                      {m.group}
+                    </span>
+                  )}
+                </div>
 
-                  <div>
-                    <div className="flex items-center space-x-3 sm:space-x-5 text-sm sm:text-base font-bold text-white">
-                      <span className="text-right w-24 sm:w-36 line-clamp-1">{m.teamA?.name || 'TBD'}</span>
-                      <span className="text-slate-600 text-xs font-normal">vs</span>
-                      <span className="text-left w-24 sm:w-36 line-clamp-1">{m.teamB?.name || 'TBD'}</span>
+                <div>
+                  <div className="flex items-center space-x-2 sm:space-x-4 text-sm sm:text-base font-bold">
+                    {/* Team A */}
+                    <div
+                      className={`text-right w-28 sm:w-44 flex items-center justify-end space-x-1.5 ${
+                        isWinnerA
+                          ? 'text-lime-400 font-extrabold'
+                          : isWinnerB
+                          ? 'text-slate-400 font-normal'
+                          : 'text-white'
+                      }`}
+                    >
+                      {isWinnerA && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-lime-500/20 text-lime-400 border border-lime-500/30 uppercase font-black flex-shrink-0">
+                          🏆 WINNER
+                        </span>
+                      )}
+                      <span className="line-clamp-1">{m.teamA?.name || 'TBD'}</span>
                     </div>
 
-                    {/* Kickoff schedule info */}
-                    <div className="flex items-center space-x-2 mt-1 text-xs">
-                      {m.scheduledAt || m.venue ? (
-                        <span className="flex items-center space-x-1.5 text-lime-400 font-medium font-mono text-[11px]">
-                          <Clock className="w-3.5 h-3.5 text-lime-400" />
-                          <span>{formatMatchSchedule(m.scheduledAt, m.venue)}</span>
-                        </span>
-                      ) : (
-                        <span className="flex items-center space-x-1 text-slate-500 text-[11px]">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>Kickoff Time & Pitch TBD</span>
+                    <span className="text-slate-600 text-xs font-normal">vs</span>
+
+                    {/* Team B */}
+                    <div
+                      className={`text-left w-28 sm:w-44 flex items-center justify-start space-x-1.5 ${
+                        isWinnerB
+                          ? 'text-lime-400 font-extrabold'
+                          : isWinnerA
+                          ? 'text-slate-400 font-normal'
+                          : 'text-white'
+                      }`}
+                    >
+                      <span className="line-clamp-1">{m.teamB?.name || 'TBD'}</span>
+                      {isWinnerB && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-lime-500/20 text-lime-400 border border-lime-500/30 uppercase font-black flex-shrink-0">
+                          🏆 WINNER
                         </span>
                       )}
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center space-x-4">
-                  {m.status === 'live' ? (
-                    <div className="flex flex-col items-end space-y-1">
-                      {m.timer && <MatchTimer timer={m.timer} status={m.status} size="sm" />}
-                      <div className="flex items-center space-x-2 font-mono text-xl sm:text-2xl font-black text-lime-400 bg-lime-500/10 border border-lime-500/30 px-3 py-1 rounded-xl">
-                        <span>{m.result?.scoreA}</span>
-                        <span>:</span>
-                        <span>{m.result?.scoreB}</span>
-                      </div>
-                      {m.result?.penalties?.scoreA != null && (
-                        <span className="text-[10px] font-mono font-bold text-amber-400">
-                          Pens: {m.result.penalties.scoreA} - {m.result.penalties.scoreB}
+                  {/* Kickoff schedule info */}
+                  <div className="flex items-center space-x-2 mt-1 text-xs">
+                    {m.scheduledAt || m.venue ? (
+                      <span className="flex items-center space-x-1.5 text-lime-400 font-medium font-mono text-[11px]">
+                        <Clock className="w-3.5 h-3.5 text-lime-400" />
+                        <span>{formatMatchSchedule(m.scheduledAt, m.venue)}</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center space-x-1 text-slate-500 text-[11px]">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Kickoff Time & Pitch TBD</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                {m.status === 'live' ? (
+                  <div className="flex flex-col items-end space-y-1">
+                    {m.timer && <MatchTimer timer={m.timer} status={m.status} size="sm" />}
+                    <div className="flex items-center space-x-2 font-mono text-xl sm:text-2xl font-black text-lime-400 bg-lime-500/10 border border-lime-500/30 px-3 py-1 rounded-xl">
+                      <span>{m.result?.scoreA}</span>
+                      <span>:</span>
+                      <span>{m.result?.scoreB}</span>
+                    </div>
+                    {m.result?.penalties?.scoreA != null && (
+                      <span className="text-[10px] font-mono font-bold text-amber-400">
+                        Pens: {m.result.penalties.scoreA} - {m.result.penalties.scoreB}
+                      </span>
+                    )}
+                  </div>
+                ) : m.status === 'completed' ? (
+                  <div className="flex flex-col items-end">
+                    <div className="font-mono text-lg sm:text-xl font-bold text-white bg-slate-900 px-3 py-1 rounded-xl border border-slate-800 flex items-center space-x-1.5">
+                      <span>{m.result?.scoreA}</span>
+                      <span className="text-slate-500">-</span>
+                      <span>{m.result?.scoreB}</span>
+                      {isDraw && (
+                        <span className="ml-1 text-[10px] font-mono text-amber-400 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold">
+                          DRAW
                         </span>
                       )}
                     </div>
-                  ) : m.status === 'completed' ? (
-                    <div className="flex flex-col items-end">
-                      <div className="font-mono text-lg sm:text-xl font-bold text-white bg-slate-900 px-3 py-1 rounded-xl border border-slate-800">
-                        <span>{m.result?.scoreA}</span>
-                        <span className="text-slate-500 mx-1">-</span>
-                        <span>{m.result?.scoreB}</span>
-                      </div>
-                      {m.result?.penalties?.scoreA != null && (
-                        <span className="text-[10px] font-mono font-bold text-amber-400 mt-1">
-                          Open Play: {m.result?.regularScore?.scoreA ?? (m.result.scoreA - m.result.penalties.scoreA)} - {m.result?.regularScore?.scoreB ?? (m.result.scoreB - m.result.penalties.scoreB)} | Pens: {m.result.penalties.scoreA} - {m.result.penalties.scoreB}
-                        </span>
-                      )}
-                      {m.earlyTermination?.isTerminatedEarly && (
+                    {m.result?.penalties?.scoreA != null && (
+                      <span className="text-[10px] font-mono font-bold text-amber-400 mt-1">
+                        Open Play: {m.result?.regularScore?.scoreA ?? (m.result.scoreA - m.result.penalties.scoreA)} - {m.result?.regularScore?.scoreB ?? (m.result.scoreB - m.result.penalties.scoreB)} | Pens: {m.result.penalties.scoreA} - {m.result.penalties.scoreB}
+                      </span>
+                    )}
+                    {m.earlyTermination?.isTerminatedEarly &&
+                      m.earlyTermination.reason !== 'Match ended before regulation full-time whistle' && (
                         <div className="mt-1 text-[10px] font-mono font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded text-right">
                           ⚠️ Terminated Early ({m.earlyTermination.endedAtMinute}'): {m.earlyTermination.reason}
                           {m.earlyTermination.note && (
@@ -395,18 +445,132 @@ export default function PublicTournamentPage() {
                           )}
                         </div>
                       )}
-                    </div>
-                  ) : (
-                    <span className="text-[11px] font-mono text-slate-500 uppercase px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800">
-                      Scheduled
-                    </span>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <span className="text-[11px] font-mono text-slate-500 uppercase px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800">
+                    Scheduled
+                  </span>
+                )}
               </div>
-            ))
-          )}
-        </div>
-      )}
+            </div>
+          );
+        };
+
+        return (
+          <div className="space-y-6">
+            {matches.length === 0 ? (
+              <div className="glass-panel p-10 rounded-2xl border border-slate-800 text-center text-slate-400 text-sm">
+                No fixtures scheduled yet.
+              </div>
+            ) : (
+              <>
+                {/* Filter Pills */}
+                <div className="flex flex-wrap items-center gap-2 pb-1">
+                  <button
+                    onClick={() => setFixtureFilter('all')}
+                    className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all ${
+                      fixtureFilter === 'all'
+                        ? 'bg-lime-500 text-slate-950 glow-lime-sm'
+                        : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800'
+                    }`}
+                  >
+                    All ({matches.length})
+                  </button>
+                  <button
+                    onClick={() => setFixtureFilter('live')}
+                    className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center space-x-1.5 ${
+                      fixtureFilter === 'live'
+                        ? 'bg-lime-500 text-slate-950 glow-lime-sm'
+                        : liveMatches.length > 0
+                        ? 'bg-lime-500/10 hover:bg-lime-500/20 text-lime-400 border border-lime-500/30'
+                        : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800'
+                    }`}
+                  >
+                    {liveMatches.length > 0 && <span className="w-2 h-2 rounded-full bg-lime-400 animate-pulse" />}
+                    <span>Live ({liveMatches.length})</span>
+                  </button>
+                  <button
+                    onClick={() => setFixtureFilter('upcoming')}
+                    className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all ${
+                      fixtureFilter === 'upcoming'
+                        ? 'bg-lime-500 text-slate-950 glow-lime-sm'
+                        : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800'
+                    }`}
+                  >
+                    Upcoming ({upcomingMatches.length})
+                  </button>
+                  <button
+                    onClick={() => setFixtureFilter('finished')}
+                    className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all ${
+                      fixtureFilter === 'finished'
+                        ? 'bg-lime-500 text-slate-950 glow-lime-sm'
+                        : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800'
+                    }`}
+                  >
+                    Finished ({finishedMatches.length})
+                  </button>
+                </div>
+
+                {/* 1. LIVE NOW SECTION */}
+                {(fixtureFilter === 'all' || fixtureFilter === 'live') && liveMatches.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2 text-xs font-mono font-bold uppercase tracking-wider text-lime-400">
+                      <span className="w-2 h-2 rounded-full bg-lime-400 animate-ping" />
+                      <span>Live Now ({liveMatches.length})</span>
+                    </div>
+                    <div className="space-y-3">
+                      {liveMatches.map(renderMatchCard)}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. UPCOMING SECTION */}
+                {(fixtureFilter === 'all' || fixtureFilter === 'upcoming') && upcomingMatches.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2 text-xs font-mono font-bold uppercase tracking-wider text-slate-400 pt-1">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Upcoming Fixtures ({upcomingMatches.length})</span>
+                    </div>
+                    <div className="space-y-3">
+                      {upcomingMatches.map(renderMatchCard)}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. FINISHED SECTION */}
+                {(fixtureFilter === 'all' || fixtureFilter === 'finished') && finishedMatches.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2 text-xs font-mono font-bold uppercase tracking-wider text-slate-400 pt-1">
+                      <Trophy className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Results & Finished ({finishedMatches.length})</span>
+                    </div>
+                    <div className="space-y-3">
+                      {finishedMatches.map(renderMatchCard)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Filter Empty States */}
+                {fixtureFilter === 'live' && liveMatches.length === 0 && (
+                  <div className="glass-panel p-8 rounded-2xl border border-slate-800 text-center text-slate-400 text-xs">
+                    No matches currently in progress.
+                  </div>
+                )}
+                {fixtureFilter === 'upcoming' && upcomingMatches.length === 0 && (
+                  <div className="glass-panel p-8 rounded-2xl border border-slate-800 text-center text-slate-400 text-xs">
+                    No upcoming fixtures scheduled.
+                  </div>
+                )}
+                {fixtureFilter === 'finished' && finishedMatches.length === 0 && (
+                  <div className="glass-panel p-8 rounded-2xl border border-slate-800 text-center text-slate-400 text-xs">
+                    No completed matches yet.
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* TAB 2: STANDINGS TABLES */}
       {activeTab === 'tables' && (

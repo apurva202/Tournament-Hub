@@ -43,6 +43,7 @@ export default function ManageTournamentPage() {
   const [successMsg, setSuccessMsg] = useState('');
 
   const [activeTab, setActiveTab] = useState('overview');
+  const [fixtureFilter, setFixtureFilter] = useState('all');
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -1008,102 +1009,270 @@ export default function ManageTournamentPage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
-              {matches.map((m) => (
-                <div key={m._id} className="glass-card p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                    <div className="flex items-center space-x-2 w-28">
-                      <span className="font-mono text-xs text-slate-400 font-semibold">
-                        {m.roundLabel || `Round ${m.round}`}
-                      </span>
-                      {m.group && (
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-lime-400 font-bold">
-                          {m.group}
+            (() => {
+              const liveMatches = matches.filter(m => m.status === 'live');
+              const upcomingMatches = matches.filter(m => m.status === 'scheduled');
+              const finishedMatches = matches.filter(m => m.status === 'completed');
+
+              const renderMatchCard = (m) => {
+                const isWinnerA = m.status === 'completed' && m.result?.winner === 'A';
+                const isWinnerB = m.status === 'completed' && m.result?.winner === 'B';
+                const isDraw = m.status === 'completed' && m.result?.winner === 'draw';
+
+                return (
+                  <div
+                    key={m._id}
+                    className={`glass-card p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+                      m.status === 'live'
+                        ? 'border-lime-500/60 bg-gradient-to-r from-lime-950/20 to-slate-900/90 shadow-lg shadow-lime-500/10'
+                        : 'border-slate-800'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                      <div className="flex items-center space-x-2 w-28">
+                        <span className="font-mono text-xs text-slate-400 font-semibold">
+                          {m.roundLabel || `Round ${m.round}`}
+                        </span>
+                        {m.status === 'live' && (
+                          <span className="flex items-center space-x-1 text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded-full bg-lime-500/20 text-lime-400 border border-lime-500/40 animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-lime-400" />
+                            <span>LIVE</span>
+                          </span>
+                        )}
+                        {m.group && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-lime-400 font-bold">
+                            {m.group}
+                          </span>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="flex items-center space-x-2 sm:space-x-3 text-sm font-bold">
+                          <span
+                            className={`flex items-center space-x-1.5 ${
+                              isWinnerA
+                                ? 'text-lime-400 font-extrabold'
+                                : isWinnerB
+                                ? 'text-slate-400 font-normal'
+                                : 'text-white'
+                            }`}
+                          >
+                            <span>{m.teamA?.name || 'TBD'}</span>
+                            {isWinnerA && (
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-lime-500/20 text-lime-400 border border-lime-500/30 uppercase font-black">
+                                🏆 WINNER
+                              </span>
+                            )}
+                          </span>
+
+                          <span className="text-slate-500 text-xs font-normal">vs</span>
+
+                          <span
+                            className={`flex items-center space-x-1.5 ${
+                              isWinnerB
+                                ? 'text-lime-400 font-extrabold'
+                                : isWinnerA
+                                ? 'text-slate-400 font-normal'
+                                : 'text-white'
+                            }`}
+                          >
+                            <span>{m.teamB?.name || 'TBD'}</span>
+                            {isWinnerB && (
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-lime-500/20 text-lime-400 border border-lime-500/30 uppercase font-black">
+                                🏆 WINNER
+                              </span>
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Schedule info */}
+                        <div className="flex items-center space-x-3 mt-1 text-xs">
+                          {m.scheduledAt || m.venue ? (
+                            <span className="flex items-center space-x-1 text-lime-400/90 font-medium">
+                              <Clock className="w-3.5 h-3.5 text-lime-400" />
+                              <span>{formatMatchSchedule(m.scheduledAt, m.venue)}</span>
+                            </span>
+                          ) : (
+                            <span className="flex items-center space-x-1 text-slate-500">
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>Kickoff Time & Pitch TBD</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-3 self-end sm:self-center">
+                      {m.status === 'scheduled' && (
+                        <button
+                          onClick={() => handleOpenScheduleModal(m)}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+                          title="Set Kickoff Date, Time & Pitch"
+                        >
+                          <Calendar className="w-3.5 h-3.5 text-lime-400" />
+                          <span>{m.scheduledAt || m.venue ? 'Edit Time' : 'Set Time'}</span>
+                        </button>
+                      )}
+
+                      {m.status === 'live' ? (
+                        <div className="flex flex-col items-end space-y-1">
+                          {m.timer && <MatchTimer timer={m.timer} status={m.status} size="sm" />}
+                          <span className="font-mono text-sm font-extrabold text-lime-400">
+                            {m.result?.scoreA} - {m.result?.scoreB}
+                          </span>
+                          {m.result?.penalties?.scoreA != null && (
+                            <span className="text-[10px] font-mono font-bold text-amber-400">
+                              ({m.result.penalties.scoreA} - {m.result.penalties.scoreB} pens)
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span
+                          className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded-full ${
+                            m.status === 'completed'
+                              ? 'bg-blue-500/20 text-blue-400'
+                              : 'bg-slate-900 text-slate-400'
+                          }`}
+                        >
+                          {m.status}
                         </span>
                       )}
-                    </div>
 
-                    <div>
-                      <div className="flex items-center space-x-3 text-sm font-bold text-white">
-                        <span>{m.teamA?.name || 'TBD'}</span>
-                        <span className="text-slate-500 text-xs font-normal">vs</span>
-                        <span>{m.teamB?.name || 'TBD'}</span>
-                      </div>
-
-                      {/* Schedule info */}
-                      <div className="flex items-center space-x-3 mt-1 text-xs">
-                        {m.scheduledAt || m.venue ? (
-                          <span className="flex items-center space-x-1 text-lime-400/90 font-medium">
-                            <Clock className="w-3.5 h-3.5 text-lime-400" />
-                            <span>{formatMatchSchedule(m.scheduledAt, m.venue)}</span>
-                          </span>
-                        ) : (
-                          <span className="flex items-center space-x-1 text-slate-500">
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>Kickoff Time & Pitch TBD</span>
-                          </span>
-                        )}
-                      </div>
+                      {m.status === 'completed' && (
+                        <div className="flex flex-col items-end">
+                          <div className="font-mono text-sm font-extrabold text-white flex items-center space-x-1.5">
+                            <span>{m.result?.scoreA} - {m.result?.scoreB}</span>
+                            {isDraw && (
+                              <span className="text-[10px] font-mono text-amber-400 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold">
+                                DRAW
+                              </span>
+                            )}
+                          </div>
+                          {m.result?.penalties?.scoreA != null && (
+                            <span className="text-[10px] font-mono font-bold text-amber-400">
+                              (Open Play: {m.result?.regularScore?.scoreA ?? (m.result.scoreA - m.result.penalties.scoreA)} - {m.result?.regularScore?.scoreB ?? (m.result.scoreB - m.result.penalties.scoreB)} | Pens: {m.result.penalties.scoreA} - {m.result.penalties.scoreB})
+                            </span>
+                          )}
+                          {m.earlyTermination?.isTerminatedEarly &&
+                            m.earlyTermination.reason !== 'Match ended before regulation full-time whistle' && (
+                              <span className="text-[10px] font-mono font-bold text-rose-400">
+                                ⚠️ Early End ({m.earlyTermination.endedAtMinute}'): {m.earlyTermination.reason}
+                              </span>
+                            )}
+                        </div>
+                      )}
                     </div>
                   </div>
+                );
+              };
 
-                  <div className="flex items-center space-x-3 self-end sm:self-center">
-                    {m.status === 'scheduled' && (
-                      <button
-                        onClick={() => handleOpenScheduleModal(m)}
-                        className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold flex items-center space-x-1.5 transition-colors"
-                        title="Set Kickoff Date, Time & Pitch"
-                      >
-                        <Calendar className="w-3.5 h-3.5 text-lime-400" />
-                        <span>{m.scheduledAt || m.venue ? 'Edit Time' : 'Set Time'}</span>
-                      </button>
-                    )}
-
-                    {m.status === 'live' ? (
-                      <div className="flex flex-col items-end space-y-1">
-                        {m.timer && <MatchTimer timer={m.timer} status={m.status} size="sm" />}
-                        <span className="font-mono text-sm font-extrabold text-lime-400">
-                          {m.result?.scoreA} - {m.result?.scoreB}
-                        </span>
-                        {m.result?.penalties?.scoreA != null && (
-                          <span className="text-[10px] font-mono font-bold text-amber-400">
-                            ({m.result.penalties.scoreA} - {m.result.penalties.scoreB} pens)
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span
-                        className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded-full ${
-                          m.status === 'completed'
-                            ? 'bg-blue-500/20 text-blue-400'
-                            : 'bg-slate-900 text-slate-400'
-                        }`}
-                      >
-                        {m.status}
-                      </span>
-                    )}
-
-                    {m.status === 'completed' && (
-                      <div className="flex flex-col items-end">
-                        <span className="font-mono text-sm font-extrabold text-white">
-                          {m.result?.scoreA} - {m.result?.scoreB}
-                        </span>
-                        {m.result?.penalties?.scoreA != null && (
-                          <span className="text-[10px] font-mono font-bold text-amber-400">
-                            (Open Play: {m.result?.regularScore?.scoreA ?? (m.result.scoreA - m.result.penalties.scoreA)} - {m.result?.regularScore?.scoreB ?? (m.result.scoreB - m.result.penalties.scoreB)} | Pens: {m.result.penalties.scoreA} - {m.result.penalties.scoreB})
-                          </span>
-                        )}
-                        {m.earlyTermination?.isTerminatedEarly && (
-                          <span className="text-[10px] font-mono font-bold text-rose-400">
-                            ⚠️ Early End ({m.earlyTermination.endedAtMinute}'): {m.earlyTermination.reason}
-                          </span>
-                        )}
-                      </div>
-                    )}
+              return (
+                <div className="space-y-6">
+                  {/* Filter Pills */}
+                  <div className="flex flex-wrap items-center gap-2 pb-1">
+                    <button
+                      onClick={() => setFixtureFilter('all')}
+                      className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all ${
+                        fixtureFilter === 'all'
+                          ? 'bg-lime-500 text-slate-950 glow-lime-sm'
+                          : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800'
+                      }`}
+                    >
+                      All ({matches.length})
+                    </button>
+                    <button
+                      onClick={() => setFixtureFilter('live')}
+                      className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center space-x-1.5 ${
+                        fixtureFilter === 'live'
+                          ? 'bg-lime-500 text-slate-950 glow-lime-sm'
+                          : liveMatches.length > 0
+                          ? 'bg-lime-500/10 hover:bg-lime-500/20 text-lime-400 border border-lime-500/30'
+                          : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800'
+                      }`}
+                    >
+                      {liveMatches.length > 0 && <span className="w-2 h-2 rounded-full bg-lime-400 animate-pulse" />}
+                      <span>Live ({liveMatches.length})</span>
+                    </button>
+                    <button
+                      onClick={() => setFixtureFilter('upcoming')}
+                      className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all ${
+                        fixtureFilter === 'upcoming'
+                          ? 'bg-lime-500 text-slate-950 glow-lime-sm'
+                          : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800'
+                      }`}
+                    >
+                      Upcoming ({upcomingMatches.length})
+                    </button>
+                    <button
+                      onClick={() => setFixtureFilter('finished')}
+                      className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all ${
+                        fixtureFilter === 'finished'
+                          ? 'bg-lime-500 text-slate-950 glow-lime-sm'
+                          : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800'
+                      }`}
+                    >
+                      Finished ({finishedMatches.length})
+                    </button>
                   </div>
+
+                  {/* 1. LIVE NOW SECTION */}
+                  {(fixtureFilter === 'all' || fixtureFilter === 'live') && liveMatches.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2 text-xs font-mono font-bold uppercase tracking-wider text-lime-400">
+                        <span className="w-2.5 h-2.5 rounded-full bg-lime-400 animate-ping" />
+                        <span>Live Now ({liveMatches.length})</span>
+                      </div>
+                      <div className="space-y-3">
+                        {liveMatches.map(renderMatchCard)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. UPCOMING SECTION */}
+                  {(fixtureFilter === 'all' || fixtureFilter === 'upcoming') && upcomingMatches.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2 text-xs font-mono font-bold uppercase tracking-wider text-slate-400 pt-1">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Upcoming Fixtures ({upcomingMatches.length})</span>
+                      </div>
+                      <div className="space-y-3">
+                        {upcomingMatches.map(renderMatchCard)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. FINISHED SECTION */}
+                  {(fixtureFilter === 'all' || fixtureFilter === 'finished') && finishedMatches.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2 text-xs font-mono font-bold uppercase tracking-wider text-slate-400 pt-1">
+                        <Trophy className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Results & Finished ({finishedMatches.length})</span>
+                      </div>
+                      <div className="space-y-3">
+                        {finishedMatches.map(renderMatchCard)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Filter Empty States */}
+                  {fixtureFilter === 'live' && liveMatches.length === 0 && (
+                    <div className="glass-panel p-8 rounded-2xl border border-slate-800 text-center text-slate-400 text-xs">
+                      No matches currently in progress.
+                    </div>
+                  )}
+                  {fixtureFilter === 'upcoming' && upcomingMatches.length === 0 && (
+                    <div className="glass-panel p-8 rounded-2xl border border-slate-800 text-center text-slate-400 text-xs">
+                      No upcoming fixtures scheduled.
+                    </div>
+                  )}
+                  {fixtureFilter === 'finished' && finishedMatches.length === 0 && (
+                    <div className="glass-panel p-8 rounded-2xl border border-slate-800 text-center text-slate-400 text-xs">
+                      No completed matches yet.
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })()
           )}
         </div>
       )}

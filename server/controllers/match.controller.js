@@ -663,7 +663,7 @@ const endMatch = async (req, res, next) => {
       "penalties",
     ].includes(match.timer?.period);
 
-    // Record early termination if provided or if match was ended before regulation concluded
+    // Record early termination ONLY if explicitly requested in payload (e.g. from early termination modal)
     if (earlyTermination && earlyTermination.isTerminatedEarly) {
       match.earlyTermination = {
         isTerminatedEarly: true,
@@ -678,16 +678,9 @@ const endMatch = async (req, res, next) => {
           earlyTermination.endedAtPeriod || match.timer?.period || "",
         endedAt: new Date(),
       };
-    } else if (!isRegulationConcluded) {
-      const endedMinute = Math.floor((match.timer?.secondsElapsed || 0) / 60);
-      match.earlyTermination = {
-        isTerminatedEarly: true,
-        reason: "Match ended before regulation full-time whistle",
-        note: `Ended during ${match.timer?.period || "live play"} at minute ${endedMinute}'`,
-        endedAtMinute: endedMinute,
-        endedAtPeriod: match.timer?.period || "",
-        endedAt: new Date(),
-      };
+    } else {
+      // Normal completion / draw / decided winner - not early termination
+      match.earlyTermination = undefined;
     }
 
     // Ensure regular score is preserved

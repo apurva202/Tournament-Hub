@@ -616,8 +616,10 @@ export default function ScoreConsolePage() {
                 )}
 
                 {/* EARLY TERMINATION COMPLETED BANNER */}
-                {selectedMatch.earlyTermination?.isTerminatedEarly && (
-                  <div className="mb-6 p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 space-y-1 animate-in fade-in">
+                {selectedMatch.earlyTermination?.isTerminatedEarly &&
+                  selectedMatch.earlyTermination.reason !==
+                    "Match ended before regulation full-time whistle" && (
+                    <div className="mb-6 p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 space-y-1 animate-in fade-in">
                     <div className="flex items-center space-x-2 text-xs font-mono font-bold text-rose-400">
                       <AlertTriangle className="w-4 h-4" />
                       <span>
